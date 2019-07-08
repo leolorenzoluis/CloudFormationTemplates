@@ -162,9 +162,9 @@ resource "aws_security_group" "grafana-tf-app" {
   }
 
   egress {
-    protocol  = "-1"
-    to_port   = "0"
-    from_port = "0"
+    protocol    = "-1"
+    to_port     = "0"
+    from_port   = "0"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -297,22 +297,100 @@ resource "aws_security_group_rule" "grafana-tf-app-db-ingress" {
   from_port                = 3306
 }
 
-
 resource "aws_security_group_rule" "grafana-tf-bastion-app-egress" {
   type                     = "egress"
   security_group_id        = "${aws_security_group.grafana-tf-bastion.id}"
   source_security_group_id = "${aws_security_group.grafana-tf-app.id}"
   protocol                 = "tcp"
-  to_port                  = 22                                      #Change to variable
+  to_port                  = 22                                            #Change to variable
   from_port                = 22
 }
-
 
 resource "aws_security_group_rule" "grafana-tf-bastion-db-egress" {
   type                     = "egress"
   security_group_id        = "${aws_security_group.grafana-tf-bastion.id}"
   source_security_group_id = "${aws_security_group.grafana-tf-db.id}"
   protocol                 = "tcp"
-  to_port                  = 5432                                      #Change to variable
+  to_port                  = 5432                                          #Change to variable
   from_port                = 3306
 }
+
+# BASTION MODULE
+
+resource "aws_iam_role_policy" "grafana-tf-cloudwatch-logs" {
+  name = "grafana-tf-cloudwatch-logs"
+  role = "${aws_iam_role.bastion_iam.id}"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+      ],
+      "Effect": "Allow",
+      "Resource": "${aws_cloudwatch_log_group.bastion-secure-log-group.arn}"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role" "bastion_iam" {
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+    EOF
+
+  name = "grafana-tf-cloudwatch-logs"
+  path = "/"
+  depends_on = ["aws_cloudwatch_log_group.bastion-secure-log-group"]
+}
+
+resource "aws_cloudwatch_log_group" "bastion-secure-log-group" {
+  retention_in_days = 90
+}
+
+resource "aws_iam_instance_profile" "bastion-instance-profile" {
+  role = "${aws_iam_role.bastion_iam.name}"
+}
+
+resource "aws_eip" "bastion-eip" {
+    vpc = true
+}
+
+resource "aws_network_interface" "bastion-network-interface" {
+    subnet_id = "${aws_subnet.grafana-tf-pub-subnet-1.id}"
+    security_groups = ["${aws_security_group.grafana-tf-bastion.id}"]
+    source_dest_check = true
+    tags {
+        Name = "grafana-tf-bastion"
+    }
+}
+
+resource "aws_eip_association" "bastion-eip-association" {
+    allocation_id = "${aws_eip.bastion-eip.id}"
+    network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
+}
+
+
+# resource "aws_instance" "bastion" {
+#     ami = "ami-f63b1193"
+#     key_name = a
+#     instance_type = "t2.micro"
+#     security_groups
+# }
+
