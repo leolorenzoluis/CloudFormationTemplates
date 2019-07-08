@@ -378,10 +378,10 @@ resource "aws_network_interface" "bastion-network-interface" {
   security_groups   = ["${aws_security_group.grafana-tf-bastion.id}"]
   source_dest_check = true
 
-#   attachment {
-#       instance = "${aws_instance.bastion.id}"
-#       device_index = 0
-#   }
+  #   attachment {
+  #       instance = "${aws_instance.bastion.id}"
+  #       device_index = 0
+  #   }
 
   tags {
     Name = "grafana-tf-bastion"
@@ -410,46 +410,46 @@ resource "aws_cloudwatch_log_metric_filter" "bastion-ssh-invalid-user-metric-fil
 }
 
 resource "aws_cloudwatch_metric_alarm" "bastion-ssh-invalid-user-alarm" {
-    alarm_description = "SSH connections attempted with invalid username is greater than 3 over 1 minutes"
-    alarm_name = "bastion-ssh-invalid-user-alarm"
-    metric_name = "sshInvalidUser"
-    namespace = "SSH"
-    statistic = "Sum"
-    period = 60
-    evaluation_periods = 1
-    threshold = 3
-    comparison_operator = "GreaterThanThreshold"
-    treat_missing_data = "notBreaching"
+  alarm_description   = "SSH connections attempted with invalid username is greater than 3 over 1 minutes"
+  alarm_name          = "bastion-ssh-invalid-user-alarm"
+  metric_name         = "sshInvalidUser"
+  namespace           = "SSH"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = 3
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
 }
 
 resource "aws_cloudwatch_log_metric_filter" "bastion-ssh-closed-connection-metric-filter" {
-    name = "bastion-ssh-closed-connection-metric-filter"
-    log_group_name = "${aws_cloudwatch_log_group.bastion-secure-log-group.name}"
-    pattern = "[Mon, day, timestamp, ip, id, msg1= Connection,msg2 = closed, ...]"
-    metric_transformation {
-        value = 1
-        namespace = "SSH"
-        name = "sshClosedConnection"
-    }
+  name           = "bastion-ssh-closed-connection-metric-filter"
+  log_group_name = "${aws_cloudwatch_log_group.bastion-secure-log-group.name}"
+  pattern        = "[Mon, day, timestamp, ip, id, msg1= Connection,msg2 = closed, ...]"
+
+  metric_transformation {
+    value     = 1
+    namespace = "SSH"
+    name      = "sshClosedConnection"
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "bastion-ssh-closed-connection-alarm" {
-    alarm_name = "bastion-ssh-closed-connection-alarm"
-    alarm_description = "SSH connections closed due to invalid SSH key or username is greater than 5 in 5 minutes"
-    namespace = "SSH"
-    statistic = "Sum"
-    metric_name = "sshInvalidUser"
-    period = 300
-    evaluation_periods = 1
-    threshold = 5
-    comparison_operator = "GreaterThanThreshold"
-    treat_missing_data = "notBreaching"
-
+  alarm_name          = "bastion-ssh-closed-connection-alarm"
+  alarm_description   = "SSH connections closed due to invalid SSH key or username is greater than 5 in 5 minutes"
+  namespace           = "SSH"
+  statistic           = "Sum"
+  metric_name         = "sshInvalidUser"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 5
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
 }
 
 resource "aws_key_pair" "bastion-key" {
-    key_name = "bastion-key"
-    public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC+AqGJw0yw+GpXJ+HQwXLRmTmhuaH3pt2KgDVk18bM3pAvg1ku1/a7nLBPZw4JZqIHdogmMRgiqT1CWnQIf9V1wT1rrsqiI2T4NIdEa+FM2G2WD8bhEs+a/++J40KM5vL6EkdIQWjTjqw9k2kArbqpk8v0mtMRRpYlblcFLfhSXhAvHKy61ikBaUZ6XiwdMPthhzMipSPSwSMTAo8JcqrJPvyFSQNuhCEUlR4FR2hO3gNBTITMEzoKW8CWJ9gwrfBA1fFzYz1YIO3MR4OLTYT0KD4jJnH1hnRvM1xNB9zXmnqu76jlmqdtXat1z9ozS+ZtmblCidSSnoo44yttthO8KHhfaDxr2gmWeMpZaGEHFxSJI5Tl8A/386ADlVRWpBeSnANLYeD9stbAtmt0siL2+Lp0XXW9AwOqTSdyNBYP3qfoaCu2BhKsflfVhNdhoQ1kryBDqiOuOiUe2/EcM+nOny8Dks2icGXSxTrhnNztxF7abAcDk5TjnjiAhTdwCP7ws7QMg534gBrsUG8HWTilaMTDRQTkRxRS9MYsLub+P7Y7O/tG/31E9bV5QEOs5I1PgWptW/7SpT7CMPklPb4izigMCu+EiTJdCH+c66V5xng/wuIZ5ogTb1TvWqrppsnDtw+KjkygZR+yQXnv9akdBJdMO1WkO3YSG2lfvzw0Cw== grafana-test@test.com"
+  key_name   = "bastion-key"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC+AqGJw0yw+GpXJ+HQwXLRmTmhuaH3pt2KgDVk18bM3pAvg1ku1/a7nLBPZw4JZqIHdogmMRgiqT1CWnQIf9V1wT1rrsqiI2T4NIdEa+FM2G2WD8bhEs+a/++J40KM5vL6EkdIQWjTjqw9k2kArbqpk8v0mtMRRpYlblcFLfhSXhAvHKy61ikBaUZ6XiwdMPthhzMipSPSwSMTAo8JcqrJPvyFSQNuhCEUlR4FR2hO3gNBTITMEzoKW8CWJ9gwrfBA1fFzYz1YIO3MR4OLTYT0KD4jJnH1hnRvM1xNB9zXmnqu76jlmqdtXat1z9ozS+ZtmblCidSSnoo44yttthO8KHhfaDxr2gmWeMpZaGEHFxSJI5Tl8A/386ADlVRWpBeSnANLYeD9stbAtmt0siL2+Lp0XXW9AwOqTSdyNBYP3qfoaCu2BhKsflfVhNdhoQ1kryBDqiOuOiUe2/EcM+nOny8Dks2icGXSxTrhnNztxF7abAcDk5TjnjiAhTdwCP7ws7QMg534gBrsUG8HWTilaMTDRQTkRxRS9MYsLub+P7Y7O/tG/31E9bV5QEOs5I1PgWptW/7SpT7CMPklPb4izigMCu+EiTJdCH+c66V5xng/wuIZ5ogTb1TvWqrppsnDtw+KjkygZR+yQXnv9akdBJdMO1WkO3YSG2lfvzw0Cw== grafana-test@test.com"
 }
 
 data "template_file" "user_data" {
@@ -457,20 +457,58 @@ data "template_file" "user_data" {
 }
 
 resource "aws_instance" "bastion" {
-    ami = "ami-f63b1193"
-    key_name = "${aws_key_pair.bastion-key.key_name}"
-    instance_type = "t2.micro"
-    user_data = "${data.template_file.user_data.rendered}"
-    iam_instance_profile = "${aws_iam_instance_profile.bastion-instance-profile.name}"
-    tags {
-        Name = "grafana-tf-bastion-instance"
-    }
+  ami                  = "ami-f63b1193"
+  key_name             = "${aws_key_pair.bastion-key.key_name}"
+  instance_type        = "t2.micro"
+  user_data            = "${data.template_file.user_data.rendered}"
+  iam_instance_profile = "${aws_iam_instance_profile.bastion-instance-profile.name}"
 
-    network_interface {
-        network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
-        device_index = 0
-    }
+  tags {
+    Name = "grafana-tf-bastion-instance"
+  }
+
+  network_interface {
+    network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
+    device_index         = 0
+  }
 }
 
 # DATABASE MODULE
+resource "aws_db_instance" "grafana-database" {
+  vpc_security_group_ids = ["${aws_security_group.grafana-tf-db.id}"]
+  engine                 = "postgres"
+  instance_class         = "db.t2.micro"                              #Change to large for prod
+  name                   = "grafana"
+  username               = "grafanatest"
+  password               = "grafana-test123"
+  allocated_storage      = 5
+  multi_az               = false                                      #Change to true for prod
+  storage_encrypted      = false                                      #Change to true for prod
+  copy_tags_to_snapshot  = true
 
+  tags {
+    Name = "grafana-tf-database"
+  }
+
+  db_subnet_group_name = "${aws_db_subnet_group.grafana-db-subnet-group.name}"
+}
+
+resource "aws_db_subnet_group" "grafana-db-subnet-group" {
+  description = "Database subnet group"
+  subnet_ids  = ["${aws_subnet.grafana-tf-pri-subnet-1.id}", "${aws_subnet.grafana-tf-pri-subnet-2.id}"]
+
+  tags {
+    Name = "Grafana database subnet group"
+  }
+}
+
+# FARGATE MODULES
+resource "aws_s3_bucket" "grafana-s3-bucket" {
+  bucket = "grafana-s3-bucket"
+  acl    = "private"
+
+  tags {
+    Name        = "Grafana tf bucket"
+    Environment = "DEV"
+  }
+}
