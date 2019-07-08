@@ -355,13 +355,9 @@ resource "aws_iam_role" "bastion_iam" {
 }
     EOF
 
-  name = "grafana-tf-cloudwatch-logs"
-  path = "/"
+  name       = "grafana-tf-cloudwatch-logs"
+  path       = "/"
   depends_on = ["aws_cloudwatch_log_group.bastion-secure-log-group"]
-}
-
-resource "aws_cloudwatch_log_group" "bastion-secure-log-group" {
-  retention_in_days = 90
 }
 
 resource "aws_iam_instance_profile" "bastion-instance-profile" {
@@ -369,28 +365,112 @@ resource "aws_iam_instance_profile" "bastion-instance-profile" {
 }
 
 resource "aws_eip" "bastion-eip" {
-    vpc = true
-}
-
-resource "aws_network_interface" "bastion-network-interface" {
-    subnet_id = "${aws_subnet.grafana-tf-pub-subnet-1.id}"
-    security_groups = ["${aws_security_group.grafana-tf-bastion.id}"]
-    source_dest_check = true
-    tags {
-        Name = "grafana-tf-bastion"
-    }
+  vpc = true
 }
 
 resource "aws_eip_association" "bastion-eip-association" {
-    allocation_id = "${aws_eip.bastion-eip.id}"
-    network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
+  allocation_id        = "${aws_eip.bastion-eip.id}"
+  network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
 }
 
+resource "aws_network_interface" "bastion-network-interface" {
+  subnet_id         = "${aws_subnet.grafana-tf-pub-subnet-1.id}"
+  security_groups   = ["${aws_security_group.grafana-tf-bastion.id}"]
+  source_dest_check = true
 
-# resource "aws_instance" "bastion" {
-#     ami = "ami-f63b1193"
-#     key_name = a
-#     instance_type = "t2.micro"
-#     security_groups
-# }
+#   attachment {
+#       instance = "${aws_instance.bastion.id}"
+#       device_index = 0
+#   }
+
+  tags {
+    Name = "grafana-tf-bastion"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "bastion-secure-log-group" {
+  retention_in_days = 90
+}
+
+resource "aws_cloudwatch_log_stream" "bastion-secure-log-group-stream" {
+  name           = "log"
+  log_group_name = "${aws_cloudwatch_log_group.bastion-secure-log-group.name}"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "bastion-ssh-invalid-user-metric-filter" {
+  name           = "bastion-ssh-invalid-user-metric-filter"
+  log_group_name = "${aws_cloudwatch_log_group.bastion-secure-log-group.name}"
+  pattern        = "[Mon, day, timestamp, ip, id, status = Invalid, ...]"
+
+  metric_transformation {
+    value     = 1
+    namespace = "SSH"
+    name      = "sshInvalidUser"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "bastion-ssh-invalid-user-alarm" {
+    alarm_description = "SSH connections attempted with invalid username is greater than 3 over 1 minutes"
+    alarm_name = "bastion-ssh-invalid-user-alarm"
+    metric_name = "sshInvalidUser"
+    namespace = "SSH"
+    statistic = "Sum"
+    period = 60
+    evaluation_periods = 1
+    threshold = 3
+    comparison_operator = "GreaterThanThreshold"
+    treat_missing_data = "notBreaching"
+}
+
+resource "aws_cloudwatch_log_metric_filter" "bastion-ssh-closed-connection-metric-filter" {
+    name = "bastion-ssh-closed-connection-metric-filter"
+    log_group_name = "${aws_cloudwatch_log_group.bastion-secure-log-group.name}"
+    pattern = "[Mon, day, timestamp, ip, id, msg1= Connection,msg2 = closed, ...]"
+    metric_transformation {
+        value = 1
+        namespace = "SSH"
+        name = "sshClosedConnection"
+    }
+}
+
+resource "aws_cloudwatch_metric_alarm" "bastion-ssh-closed-connection-alarm" {
+    alarm_name = "bastion-ssh-closed-connection-alarm"
+    alarm_description = "SSH connections closed due to invalid SSH key or username is greater than 5 in 5 minutes"
+    namespace = "SSH"
+    statistic = "Sum"
+    metric_name = "sshInvalidUser"
+    period = 300
+    evaluation_periods = 1
+    threshold = 5
+    comparison_operator = "GreaterThanThreshold"
+    treat_missing_data = "notBreaching"
+
+}
+
+resource "aws_key_pair" "bastion-key" {
+    key_name = "bastion-key"
+    public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC+AqGJw0yw+GpXJ+HQwXLRmTmhuaH3pt2KgDVk18bM3pAvg1ku1/a7nLBPZw4JZqIHdogmMRgiqT1CWnQIf9V1wT1rrsqiI2T4NIdEa+FM2G2WD8bhEs+a/++J40KM5vL6EkdIQWjTjqw9k2kArbqpk8v0mtMRRpYlblcFLfhSXhAvHKy61ikBaUZ6XiwdMPthhzMipSPSwSMTAo8JcqrJPvyFSQNuhCEUlR4FR2hO3gNBTITMEzoKW8CWJ9gwrfBA1fFzYz1YIO3MR4OLTYT0KD4jJnH1hnRvM1xNB9zXmnqu76jlmqdtXat1z9ozS+ZtmblCidSSnoo44yttthO8KHhfaDxr2gmWeMpZaGEHFxSJI5Tl8A/386ADlVRWpBeSnANLYeD9stbAtmt0siL2+Lp0XXW9AwOqTSdyNBYP3qfoaCu2BhKsflfVhNdhoQ1kryBDqiOuOiUe2/EcM+nOny8Dks2icGXSxTrhnNztxF7abAcDk5TjnjiAhTdwCP7ws7QMg534gBrsUG8HWTilaMTDRQTkRxRS9MYsLub+P7Y7O/tG/31E9bV5QEOs5I1PgWptW/7SpT7CMPklPb4izigMCu+EiTJdCH+c66V5xng/wuIZ5ogTb1TvWqrppsnDtw+KjkygZR+yQXnv9akdBJdMO1WkO3YSG2lfvzw0Cw== grafana-test@test.com"
+}
+
+data "template_file" "user_data" {
+  template = "${file("${path.module}/userdata.tpl")}"
+}
+
+resource "aws_instance" "bastion" {
+    ami = "ami-f63b1193"
+    key_name = "${aws_key_pair.bastion-key.key_name}"
+    instance_type = "t2.micro"
+    user_data = "${data.template_file.user_data.rendered}"
+    iam_instance_profile = "${aws_iam_instance_profile.bastion-instance-profile.name}"
+    tags {
+        Name = "grafana-tf-bastion-instance"
+    }
+
+    network_interface {
+        network_interface_id = "${aws_network_interface.bastion-network-interface.id}"
+        device_index = 0
+    }
+}
+
+# DATABASE MODULE
 
