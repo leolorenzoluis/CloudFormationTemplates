@@ -1,0 +1,47 @@
+[
+  {
+    "Name": "grafana",
+    "Image": "grafana/grafana",
+    "Essential": true,
+    "PortMappings": [
+      {
+        "containerPort": 80,
+        "hostPort": 80
+      }
+    ],
+    "Environment": [
+      {
+        "Name": "GF_DATABASE_TYPE",
+        "Value": "postgres"
+      },
+      {
+        "Name": "GF_DATABASE_HOST",
+        "Value": null
+      },
+      {
+        "Name": "GF_DATABASE_USER",
+        "Value": null
+      },
+      {
+        "Name": "GF_DATABASE_PASSWORD",
+        "Value": null
+      },
+      {
+        "Name": "GF_DATABASE_NAME",
+        "Value": null
+      },
+      {
+        "Name": "LOAD_BALANCER_DNS",
+        "Value": null
+      }
+    ],
+    "LogConfiguration": {
+      "LogDriver": "awslogs",
+      "Options": {
+        "awslogs-region": null,
+        "awslogs-group": null,
+        "awslogs-stream-prefix": "grafana"
+      }
+    }
+  }
+]

@@ -512,3 +512,109 @@ resource "aws_s3_bucket" "grafana-s3-bucket" {
     Environment = "DEV"
   }
 }
+
+resource "aws_ecs_cluster" "grafana-ecs-cluster" {
+  name = "grafana-tf-ecs"
+}
+
+resource "aws_lb" "grafana-lb" {
+  subnets         = ["${aws_subnet.grafana-tf-pub-subnet-1.id}", "${aws_subnet.grafana-tf-pub-subnet-2.id}"]
+  security_groups = ["${aws_security_group.grafana-tf-elb.id}", "${aws_security_group.grafana-tf-app.id}"]
+
+  tags {
+    Name = "Grafana-tf-loadbalancer"
+  }
+}
+
+# Don't have DNS yet
+# resource "aws_route53_record" "grafana-www" {
+#     name = ""
+# }
+
+resource "aws_cloudwatch_log_group" "grafana-tf-app-loggroup" {
+  name              = "grafana-tf-app-loggroup"
+  retention_in_days = 7
+}
+
+resource "aws_iam_role" "grafana-tf-app-task-role" {
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+
+  name       = "grafana-tf-app-task-role"
+  path       = "/"
+  depends_on = ["aws_s3_bucket.grafana-s3-bucket"]
+}
+
+resource "aws_iam_role" "grafana-tf-app-execution-role" {
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+
+  name       = "grafana-tf-app-cloudwatch-logs"
+  path       = "/"
+  depends_on = ["aws_cloudwatch_log_group.grafana-tf-app-loggroup"]
+}
+
+resource "aws_iam_role_policy" "grafana-tf-app-task-role_policy" {
+  name = "grafana-tf-app-task-role"
+  role = "${aws_iam_role.grafana-tf-app-task-role.id}"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "${aws_cloudwatch_log_group.grafana-tf-app-loggroup.arn}"
+    }
+  ]
+}
+EOF
+}
+
+data "aws_iam_policy" "AmazonECSTaskExecutionRolePolicy" {
+  arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "grafana-tf-attach" {
+  role       = "${aws_iam_role.grafana-tf-app-execution-role.name}"
+  policy_arn = "${data.aws_iam_policy.AmazonECSTaskExecutionRolePolicy.arn}"
+}
+
+resource "aws_ecs_task_definition" "grafana-tf-task-definition" {
+  family             = "grafana-tf-ecs"
+  cpu                = 256
+  memory             = 512
+  network_mode       = "awsvpc"
+  task_role_arn      = "${aws_iam_role.grafana-tf-app-task-role.arn}"
+  execution_role_arn = "${aws_iam_role.grafana-tf-app-execution-role.arn}"
+    # refactor to template file vvvv
+  container_definitions = "${file("${path.module}/grafana.service.json")}"
+}
