@@ -1,4 +1,5 @@
 provider "aws" {
+  #region = "us-east-2"
   region = "us-east-2"
 }
 
@@ -504,7 +505,7 @@ resource "aws_db_subnet_group" "grafana-db-subnet-group" {
 
 # FARGATE MODULES
 resource "aws_s3_bucket" "grafana-s3-bucket" {
-  bucket = "grafana-s3-bucket"
+  bucket = "psi-grafana-s3-bucket"
   acl    = "private"
 
   tags {
@@ -608,13 +609,22 @@ resource "aws_iam_role_policy_attachment" "grafana-tf-attach" {
   policy_arn = "${data.aws_iam_policy.AmazonECSTaskExecutionRolePolicy.arn}"
 }
 
-resource "aws_ecs_task_definition" "grafana-tf-task-definition" {
-  family             = "grafana-tf-ecs"
-  cpu                = 256
-  memory             = 512
-  network_mode       = "awsvpc"
-  task_role_arn      = "${aws_iam_role.grafana-tf-app-task-role.arn}"
-  execution_role_arn = "${aws_iam_role.grafana-tf-app-execution-role.arn}"
-    # refactor to template file vvvv
-  container_definitions = "${file("${path.module}/grafana.service.json")}"
+data "template_file" "container-definitions" {
+  template = "${file("${path.module}/grafana.service.tpl")}"
+  vars = {
+    databaseUrl = "${aws_db_instance.grafana-database.address}"
+    applicationDns = "${aws_lb.grafana-lb.dns_name}"
+  }
 }
+
+# resource "aws_ecs_task_definition" "grafana-tf-task-definition" {
+#   family             = "grafana-tf-ecs"
+#   cpu                = 256
+#   memory             = 512
+#   network_mode       = "awsvpc"
+#   task_role_arn      = "${aws_iam_role.grafana-tf-app-task-role.arn}"
+#   execution_role_arn = "${aws_iam_role.grafana-tf-app-execution-role.arn}"
+
+#   # refactor to template file vvvv
+#   container_definitions = "${data.template_file.container-definitions.rendered}"
+# }

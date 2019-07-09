@@ -16,23 +16,23 @@
       },
       {
         "Name": "GF_DATABASE_HOST",
-        "Value": null
+        "Value": ${databaseUrl}
       },
       {
         "Name": "GF_DATABASE_USER",
-        "Value": null
+        "Value": "grafanatest"
       },
       {
         "Name": "GF_DATABASE_PASSWORD",
-        "Value": null
+        "Value": "grafana-test123"
       },
       {
         "Name": "GF_DATABASE_NAME",
-        "Value": null
+        "Value": "grafana"
       },
       {
         "Name": "LOAD_BALANCER_DNS",
-        "Value": null
+        "Value": ${applicationDns}
       }
     ],
     "LogConfiguration": {
